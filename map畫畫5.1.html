@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UAV 飛行範圍與起降點規畫工具</title>
+    <!-- 引入 Leaflet CSS 樣式 -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- 引入 Leaflet Rotate CSS (支援地圖旋轉與指北針) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.css" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+        }
+        #sidebar {
+            width: 380px;
+            padding: 20px;
+            box-sizing: border-box;
+            background: #f4f4f4;
+            border-right: 1px solid #ccc;
+            overflow-y: auto;
+        }
+        .input-group {
+            margin-bottom: 10px;
+        }
+        label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: bold;
+            font-size: 13px;
+        }
+        input[type="text"], select {
+            width: 100%;
+            padding: 6px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        button {
+            width: 100%;
+            padding: 8px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+        button:hover { background-color: #0056b3; }
+        button.active { background-color: #28a745; }
+        button.h-btn { background-color: #d9534f; }
+        button.h-btn.active { background-color: #c9302c; border: 2px solid #fff; }
+
+        button.secondary { background-color: #6c757d; }
+        button.secondary:hover { background-color: #5a6268; }
+        button.danger { background-color: #dc3545; padding: 3px 6px; font-size: 11px; width: auto; margin-left: 5px; margin-bottom: 0; }
+        button.danger:hover { background-color: #bd2130; }
+        button.success { background-color: #28a745; }
+        button.success:hover { background-color: #218838; }
+
+        hr { border: 0; border-top: 1px solid #ccc; margin: 12px 0; }
+        
+        #polygon-points-container {
+            max-height: 120px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 6px;
+            background: #fff;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+        .point-item {
+            font-size: 12px;
+            margin-bottom: 5px;
+            padding: 5px;
+            background: #e9ecef;
+            border-radius: 3px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .h-point-box {
+            font-size: 12px;
+            padding: 6px;
+            background: #fdf7f7;
+            border: 1px dashed #d9534f;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #map {
+            flex-grow: 1;
+            height: 100%;
+        }
+
+        .layer-select-box {
+            background: #fff;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        .custom-number-icon {
+            background-color: #d9534f;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            font-weight: bold;
+            line-height: 26px;
+            font-size: 14px;
+            border: 2px solid white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        .custom-h-icon {
+            background-color: #e67e22;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            font-weight: bold;
+            line-height: 32px;
+            font-size: 16px;
+            border: 2px solid white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+        }
+        .custom-tower-icon {
+            background-color: #f39c12;
+            color: white;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+            line-height: 30px;
+            font-size: 16px;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+        }
+
+        .leaflet-control-rotate {
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+            padding: 4px;
+            border: 2px solid rgba(0,0,0,0.1);
+            margin-left: 10px !important;
+            margin-bottom: 10px !important;
+        }
+        .leaflet-control-rotate-toggle {
+            width: 76px !important;     
+            height: 76px !important;    
+            background-color: #fff !important;
+            border-radius: 6px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .compass-svg {
+            width: 66px;
+            height: 66px;
+        }
+
+        /* 目前位置按鈕樣式 */
+        .leaflet-bar a.locate-btn {
+            font-size: 18px;
+            line-height: 30px;
+            text-align: center;
+            text-decoration: none;
+            color: black;
+            background-color: white;
+        }
+        .leaflet-bar a.locate-btn:hover {
+            background-color: #f4f4f4;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <h2>UAV 飛行與障礙物規畫</h2>
+        
+        <!-- 坐標系切換 -->
+        <div class="input-group">
+            <label for="crsSelect">坐標系選擇：</label>
+            <select id="crsSelect" onchange="changeCRS()">
+                <option value="DMS">WGS84 度分秒 (DMS)</option>
+                <option value="WGS84">WGS84 經緯度 (小數度)</option>
+                <option value="TWD97">TWD97 二度分帶 (EPSG:3826)</option>
+            </select>
+        </div>
+
+        <!-- 底圖選擇選單 -->
+        <div class="layer-select-box">
+            <label for="basemapSelect">地圖底圖選擇：</label>
+            <select id="basemapSelect" onchange="changeBasemap()">
+                <option value="emap">內政部臺灣通用電子地圖</option>
+                <option value="PHOTO2">國土測繪中心正射影像 (衛星圖)</option>
+                <option value="EMAP01">TGOS 台灣通用電子地圖 (白底版)</option>
+                <option value="HILLSHADE">TGOS 地形暈渲圖</option>
+            </select>
+            <p style="font-size: 11px; color: #666; margin: 6px 0 0 0;">💡 提示：可從右上角圖層控制勾選「路名與地標圖層」疊加於衛星圖上。</p>
+        </div>
+
+        <hr>
+
+        <!-- 地址搜尋 -->
+        <div class="input-group">
+            <label for="addressInput">地址 / 地標快速定位：</label>
+            <input type="text" id="addressInput" placeholder="例如：臺中市西區...">
+        </div>
+        <button onclick="searchAddress()">搜尋定位</button>
+
+        <hr>
+
+        <!-- 單點模式結果 -->
+        <div id="single-mode-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 5px 0;">單點座標查詢</h3>
+                <button class="danger" onclick="clearSinglePoint()">清除單點</button>
+            </div>
+            <div class="input-group">
+                <label id="lbl-coord1">北緯 N:</label>
+                <input type="text" id="coord1" placeholder="請輸入數值...">
+            </div>
+            <div class="input-group">
+                <label id="lbl-coord2">東經 E:</label>
+                <input type="text" id="coord2" placeholder="請輸入數值...">
+            </div>
+            <button class="success" onclick="locateInputCoord()">📍 定位輸入的座標</button>
+        </div>
+
+        <hr>
+
+        <!-- 多邊形與 H 點控制 -->
+        <div>
+            <h3>空域範圍 (多邊形點位)</h3>
+            <button id="togglePolygonBtn" class="secondary" onclick="togglePolygonMode()">切換為：多邊形點選模式</button>
+            <button class="secondary" onclick="clearAllPolygon()">清除所有多邊形點位</button>
+            <div id="polygon-points-container">
+                <span style="color: #888; font-size: 12px;">尚未選取多邊形點位</span>
+            </div>
+
+            <h3>起降點 H 規劃</h3>
+            <button id="toggleHBtn" class="h-btn" onclick="toggleHMode()">切換為：放置起降點 H 模式</button>
+            <div id="h-point-container" class="h-point-box">
+                <span style="color: #888; font-size: 12px;">尚未設定起降點 H</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <!-- 引入 Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate-src.js"></script>
+    
+    <script>
+        function toDMS(lat, lng) {
+            function convert(num) {
+                let absolute = Math.abs(num);
+                let degrees = Math.floor(absolute);
+                let minutesNotTruncated = (absolute - degrees) * 60;
+                let minutes = Math.floor(minutesNotTruncated);
+                let seconds = Math.round((minutesNotTruncated - minutes) * 60);
+                return `${degrees}度${minutes}分${seconds}秒`;
+            }
+            return { lat: convert(lat), lng: convert(lng) };
+        }
+
+        function wgs84ToTwd97(lat, lng) {
+            const a = 6378137.0, k0 = 0.9999, dx = 250000;
+            let phi = lat * Math.PI / 180, lam = lng * Math.PI / 180;
+            let lon0 = 121 * Math.PI / 180, sinPhi = Math.sin(phi), cosPhi = Math.cos(phi);
+            let t = Math.tan(phi), c = 0.00673949674227 * Math.pow(cosPhi, 2), A = (lam - lon0) * cosPhi;
+            let M = a * ((1 - 0.00669437999013/4) * phi - 0.0016239 * Math.sin(2*phi));
+            let N = a / Math.sqrt(1 - 0.00669437999013 * sinPhi * sinPhi);
+            let x = k0 * N * (A + (1 - t*t + c)*Math.pow(A,3)/6) + dx;
+            let y = k0 * (M + N * t * (A*A/2 + (5 - t*t + 9*c)*Math.pow(A,4)/24));
+            return { x: x.toFixed(2), y: y.toFixed(2) };
+        }
+
+        // TWD97 (XY) 轉 WGS84 (LatLon) 簡易近似反算
+        function twd97ToWgs84(x, y) {
+            const a = 6378137.0, b = 6356752.3142, k0 = 0.9999, dx = 250000, lon0 = 121 * Math.PI / 180;
+            let x_val = parseFloat(x) - dx;
+            let y_val = parseFloat(y);
+            let M = y_val / k0;
+            let mu = M / (a * (1 - 0.00669437999013/4 - 3*Math.pow(0.00669437999013,2)/64));
+            let phi1 = mu + (3*0.0008064/2 - 27*Math.pow(0.0008064,3)/32)*Math.sin(2*mu);
+            let sinPhi1 = Math.sin(phi1), cosPhi1 = Math.cos(phi1);
+            let t1 = Math.tan(phi1), c1 = 0.00673949674227 * Math.pow(cosPhi1, 2);
+            let N1 = a / Math.sqrt(1 - 0.00669437999013 * sinPhi1 * sinPhi1);
+            let R1 = N1 * (1 - 0.00669437999013) / (1 - 0.00669437999013 * sinPhi1 * sinPhi1);
+            let D = x_val / (N1 * k0);
+            
+            let lat = phi1 - (N1 * t1 / R1) * (D*D/2 - (5 + 3*t1*t1 + 10*c1 - 4*c1*c1 - 9*0.00673949674227)*Math.pow(D,4)/24);
+            let lon = lon0 + (D - (1 + 2*t1*t1 + c1)*Math.pow(D,3)/6) / cosPhi1;
+            return { lat: lat * 180 / Math.PI, lng: lon * 180 / Math.PI };
+        }
+
+        const wmtsBaseUrl = "https://wmts.nlsc.gov.tw/wmts";
+
+        // 底圖定義
+        var layers = {
+            "emap": L.tileLayer(`${wmtsBaseUrl}/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}`, {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://maps.nlsc.gov.tw/">內政部國土測繪中心</a>'
+            }),
+            "PHOTO2": L.tileLayer(`${wmtsBaseUrl}/PHOTO2/default/GoogleMapsCompatible/{z}/{y}/{x}`, {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://maps.nlsc.gov.tw/">國土測繪中心正射影像</a>'
+            }),
+            "EMAP01": L.tileLayer(`${wmtsBaseUrl}/EMAP01/default/GoogleMapsCompatible/{z}/{y}/{x}`, {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://tgos.tw/">TGOS 台灣通用電子地圖</a>'
+            }),
+            "HILLSHADE": L.tileLayer(`${wmtsBaseUrl}/HILLSHADE/default/GoogleMapsCompatible/{z}/{y}/{x}`, {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://tgos.tw/">TGOS 地形暈渲圖</a>'
+            })
+        };
+
+        // 疊加圖層 (Overlays)
+        var roadLabelLayer = L.tileLayer(`${wmtsBaseUrl}/ROAD/default/GoogleMapsCompatible/{z}/{y}/{x}`, {
+            maxZoom: 19,
+            opacity: 0.9,
+            attribution: '&copy; 國土測繪中心道路及門牌資料'
+        });
+
+        var powerTowerLayer = L.layerGroup();
+
+        var map = L.map('map', {
+            center: [24.1477, 120.6736], // 預設台中
+            zoom: 12,
+            layers: [layers["emap"]],
+            rotate: true,           
+            touchRotate: true,      
+            rotateControl: {
+                position: 'bottomleft', 
+                closeOnZeroBearing: false
+            }
+        });
+
+        var baseMaps = {
+            "內政部通用電子地圖": layers["emap"],
+            "國土測繪中心正射影像": layers["PHOTO2"],
+            "TGOS 電子地圖(白底)": layers["EMAP01"],
+            "TGOS 地形暈渲圖": layers["HILLSHADE"]
+        };
+
+        var overlayMaps = {
+            "🏷️ 路名與地標圖層": roadLabelLayer,
+            "⚡ 內建電塔圖層": powerTowerLayer
+        };
+
+        L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
+
+        // 預設開啟內建電塔圖層
+        powerTowerLayer.addTo(map);
+
+        // 新增：右上角「定位目前位置」按鈕控制項
+        var LocateControl = L.Control.extend({
+            options: { position: 'topright' },
+            onAdd: function (map) {
+                var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+                var link = L.DomUtil.create('a', 'locate-btn', container);
+                link.href = '#';
+                link.title = '定位目前位置';
+                link.innerHTML = '📍';
+                
+                L.DomEvent.on(link, 'click', function (e) {
+                    L.DomEvent.stopPropagation(e);
+                    L.DomEvent.preventDefault(e);
+                    
+                    if (!navigator.geolocation) {
+                        alert('您的瀏覽器不支援地理定位功能');
+                        return;
+                    }
+                    
+                    navigator.geolocation.getCurrentPosition(function (position) {
+                        let lat = position.coords.latitude;
+                        let lng = position.coords.longitude;
+                        map.setView([lat, lng], 17);
+                        updateSingleDisplay(lat, lng);
+                        if (singleMarker) map.removeLayer(singleMarker);
+                        singleMarker = L.marker([lat, lng]).addTo(map);
+                        singleMarker.bindPopup(`您的目前位置<br>${formatCoord(lat, lng)}<br><br><button class="danger" onclick="clearSinglePoint()">清除此點</button>`).openPopup();
+                    }, function (error) {
+                        alert('無法取得您的目前位置，請確認是否已授權定位權限。');
+                    }, { enableHighAccuracy: true });
+                });
+                return container;
+            }
+        });
+        map.addControl(new LocateControl());
+
+        // 自動讀取同資料夾底下的 towers.geojson 檔案
+        fetch('towers.geojson')
+            .then(response => response.json())
+            .then(data => {
+                if (data.features) {
+                    let count = 0;
+                    data.features.forEach(f => {
+                        if (f.geometry && f.geometry.type === 'Point') {
+                            let coords = f.geometry.coordinates;
+                            let lat = coords[1], lon = coords[0];
+                            count++;
+
+                            let tIcon = L.divIcon({
+                                className: 'custom-tower-icon',
+                                html: '⚡',
+                                iconSize: [30, 30],
+                                iconAnchor: [15, 15]
+                            });
+
+                            let marker = L.marker([lat, lon], { icon: tIcon });
+                            marker.bindPopup(`高壓電塔 #${count}<br>${formatCoord(lat, lon)}`);
+                            powerTowerLayer.addLayer(marker);
+                        }
+                    });
+                    console.log(`成功內建載入 ${count} 筆電塔資料`);
+                }
+            })
+            .catch(err => {
+                console.log('尚未找到 towers.geojson 檔案');
+            });
+
+        function changeBasemap() {
+            let val = document.getElementById('basemapSelect').value;
+            Object.keys(layers).forEach(key => {
+                if (map.hasLayer(layers[key])) map.removeLayer(layers[key]);
+            });
+            if (layers[val]) layers[val].addTo(map);
+        }
+
+        setTimeout(() => {
+            let rotateToggle = document.querySelector('.leaflet-control-rotate-toggle');
+            if (rotateToggle) {
+                rotateToggle.innerHTML = `
+                    <svg class="compass-svg" viewBox="0 0 100 100" id="compassIcon">
+                        <polygon points="50,12 40,42 60,42" fill="#222"/>
+                        <text x="50" y="36" font-size="14" font-weight="bold" fill="#dc3545" text-anchor="middle">N</text>
+                        <polygon points="50,88 40,58 60,58" fill="#cccccc"/>
+                        <circle cx="50" cy="50" r="5" fill="#444" stroke="#fff" stroke-width="2"/>
+                    </svg>
+                `;
+                rotateToggle.title = '點擊重置地圖方位';
+
+                map.on('rotate', function() {
+                    let bearing = map.getBearing();
+                    let compass = document.getElementById('compassIcon');
+                    if (compass) {
+                        compass.style.transform = `rotate(${bearing}deg)`;
+                        compass.style.transformOrigin = 'center center';
+                    }
+                });
+            }
+        }, 300);
+
+        let currentCRS = 'DMS';
+        let isPolygonMode = false;
+        let isHMode = false;
+
+        let polygonPoints = [];       
+        let polygonMarkers = [];    
+        let polygonLayer = null;    
+        
+        let hPoint = null;
+        let hMarker = null;
+        let singleMarker = null;
+
+        let lastLat = null, lastLng = null;
+
+        function changeCRS() {
+            currentCRS = document.getElementById('crsSelect').value;
+            const lbl1 = document.getElementById('lbl-coord1');
+            const lbl2 = document.getElementById('lbl-coord2');
+
+            if (currentCRS === 'TWD97') {
+                lbl1.innerText = 'TWD97 X (公尺):';
+                lbl2.innerText = 'TWD97 Y (公尺):';
+            } else if (currentCRS === 'WGS84') {
+                lbl1.innerText = '北緯 Latitude:';
+                lbl2.innerText = '東經 Longitude:';
+            } else {
+                lbl1.innerText = '北緯 N:';
+                lbl2.innerText = '東經 E:';
+            }
+
+            if (lastLat !== null && lastLng !== null) updateSingleDisplay(lastLat, lastLng);
+            updatePolygonUI();
+            updateHUI();
+        }
+
+        function formatCoord(lat, lng) {
+            if (currentCRS === 'TWD97') {
+                let twd = wgs84ToTwd97(lat, lng);
+                return `X: ${twd.x}, Y: ${twd.y}`;
+            } else if (currentCRS === 'WGS84') {
+                return `北緯: ${Number(lat).toFixed(6)}, 東經: ${Number(lng).toFixed(6)}`;
+            } else {
+                let dms = toDMS(lat, lng);
+                return `${dms.lat} / ${dms.lng}`;
+            }
+        }
+
+        function updateSingleDisplay(lat, lng) {
+            lastLat = lat;
+            lastLng = lng;
+            if (currentCRS === 'TWD97') {
+                let twd = wgs84ToTwd97(lat, lng);
+                document.getElementById('coord1').value = twd.x;
+                document.getElementById('coord2').value = twd.y;
+            } else if (currentCRS === 'WGS84') {
+                document.getElementById('coord1').value = Number(lat).toFixed(6);
+                document.getElementById('coord2').value = Number(lng).toFixed(6);
+            } else {
+                let dms = toDMS(lat, lng);
+                document.getElementById('coord1').value = dms.lat;
+                document.getElementById('coord2').value = dms.lng;
+            }
+        }
+
+        // 根據輸入框的座標進行地圖定位
+        function locateInputCoord() {
+            let val1 = document.getElementById('coord1').value.trim();
+            let val2 = document.getElementById('coord2').value.trim();
+
+            if (!val1 || !val2) {
+                alert('請先輸入完整的座標數值！');
+                return;
+            }
+
+            let lat, lng;
+
+            if (currentCRS === 'TWD97') {
+                let x = parseFloat(val1);
+                let y = parseFloat(val2);
+                if (isNaN(x) || isNaN(y)) { alert('TWD97 座標格式錯誤'); return; }
+                let wgs = twd97ToWgs84(x, y);
+                lat = wgs.lat;
+                lng = wgs.lng;
+            } else if (currentCRS === 'WGS84') {
+                lat = parseFloat(val1);
+                lng = parseFloat(val2);
+                if (isNaN(lat) || isNaN(lng)) { alert('經緯度格式錯誤'); return; }
+            } else {
+                // DMS 度分秒解析（簡易支援輸入數字或文字）
+                // 若使用者是直接透過地圖點擊帶入的，直接使用 lastLat/lastLng 即可
+                if (lastLat !== null && lastLng !== null) {
+                    lat = lastLat;
+                    lng = lastLng;
+                } else {
+                    alert('度分秒格式較複雜，建議直接點擊地圖或切換為「WGS84 經緯度」再手動輸入定位！');
+                    return;
+                }
+            }
+
+            map.setView([lat, lng], 17);
+            updateSingleDisplay(lat, lng);
+            if (singleMarker) map.removeLayer(singleMarker);
+            singleMarker = L.marker([lat, lng]).addTo(map);
+            singleMarker.bindPopup(`指定座標查詢<br>${formatCoord(lat, lng)}<br><br><button class="danger" onclick="clearSinglePoint()">清除此點</button>`).openPopup();
+        }
+
+        function clearSinglePoint() {
+            if (singleMarker) { map.removeLayer(singleMarker); singleMarker = null; }
+            lastLat = null; lastLng = null;
+            document.getElementById('coord1').value = '';
+            document.getElementById('coord2').value = '';
+        }
+
+        function resetModes(activeMode) {
+            isPolygonMode = (activeMode === 'polygon');
+            isHMode = (activeMode === 'H');
+
+            document.getElementById('togglePolygonBtn').className = isPolygonMode ? 'active' : 'secondary';
+            document.getElementById('togglePolygonBtn').innerText = isPolygonMode ? '【多邊形選點中 - 點擊地圖新增】' : '切換為：多邊形點選模式';
+
+            let hBtn = document.getElementById('toggleHBtn');
+            hBtn.className = isHMode ? 'h-btn active' : 'h-btn';
+            hBtn.innerText = isHMode ? '【請在地圖點擊放置 H 點】' : '切換為：放置起降點 H 模式';
+        }
+
+        function togglePolygonMode() { resetModes(isPolygonMode ? '' : 'polygon'); }
+        function toggleHMode() { resetModes(isHMode ? '' : 'H'); }
+
+        function clearAllPolygon() {
+            polygonPoints = [];
+            polygonMarkers.forEach(m => map.removeLayer(m));
+            polygonMarkers = [];
+            if (polygonLayer) { map.removeLayer(polygonLayer); polygonLayer = null; }
+            updatePolygonUI();
+        }
+
+        function removePolygonPoint(index) {
+            map.removeLayer(polygonMarkers[index]);
+            polygonPoints.splice(index, 1);
+            polygonMarkers.splice(index, 1);
+
+            polygonMarkers.forEach((m, idx) => {
+                let numIcon = L.divIcon({
+                    className: 'custom-number-icon',
+                    html: idx + 1,
+                    iconSize: [26, 26],
+                    iconAnchor: [13, 13]
+                });
+                m.setIcon(numIcon);
+                m.setPopupContent(`空域範圍點位 #${idx + 1}<br>${formatCoord(polygonPoints[idx].lat, polygonPoints[idx].lng)}<br><br><button class="danger" onclick="removePolygonPoint(${idx})">刪除此點</button>`);
+            });
+
+            updatePolygonUI();
+            drawPolygon();
+        }
+
+        function clearHPoint() {
+            if (hMarker) { map.removeLayer(hMarker); hMarker = null; }
+            hPoint = null;
+            updateHUI();
+        }
+
+        function updatePolygonUI() {
+            const container = document.getElementById('polygon-points-container');
+            if (polygonPoints.length === 0) {
+                container.innerHTML = '<span style="color: #888; font-size: 12px;">尚未選取多邊形點位</span>';
+                return;
+            }
+            let html = '';
+            polygonPoints.forEach((pt, index) => {
+                html += `<div class="point-item">
+                    <span><strong>#${index + 1}</strong>: ${formatCoord(pt.lat, pt.lng)}</span>
+                    <button class="danger" onclick="removePolygonPoint(${index})">刪除</button>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function updateHUI() {
+            const container = document.getElementById('h-point-container');
+            if (!hPoint) {
+                container.innerHTML = '<span style="color: #888; font-size: 12px;">尚未設定起降點 H</span>';
+                return;
+            }
+            container.innerHTML = `
+                <div><strong>起降點 H</strong><br>${formatCoord(hPoint.lat, hPoint.lng)}</div>
+                <button class="danger" onclick="clearHPoint()">刪除</button>
+            `;
+        }
+
+        function drawPolygon() {
+            if (polygonLayer) map.removeLayer(polygonLayer);
+            if (polygonPoints.length >= 3) {
+                let latLngs = polygonPoints.map(p => [p.lat, p.lng]);
+                polygonLayer = L.polygon(latLngs, { color: '#ffcc00', weight: 4, fillColor: '#ffcc00', fillOpacity: 0.2 }).addTo(map);
+            }
+        }
+
+        map.on('click', function(e) {
+            let lat = e.latlng.lat, lng = e.latlng.lng;
+
+            if (isPolygonMode) {
+                polygonPoints.push({ lat: lat, lng: lng });
+                let idx = polygonPoints.length - 1;
+                let pointNum = polygonPoints.length;
+
+                let numIcon = L.divIcon({
+                    className: 'custom-number-icon',
+                    html: pointNum,
+                    iconSize: [26, 26],
+                    iconAnchor: [13, 13]
+                });
+
+                let marker = L.marker([lat, lng], { icon: numIcon }).addTo(map);
+                marker.bindPopup(`空域範圍點位 #${pointNum}<br>${formatCoord(lat, lng)}<br><br><button class="danger" onclick="removePolygonPoint(${idx})">刪除此點</button>`);
+                marker.openPopup();
+                
+                polygonMarkers.push(marker);
+                updatePolygonUI();
+                drawPolygon();
+            } 
+            else if (isHMode) {
+                hPoint = { lat: lat, lng: lng };
+                if (hMarker) map.removeLayer(hMarker);
+
+                let hIcon = L.divIcon({
+                    className: 'custom-h-icon',
+                    html: 'H',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16]
+                });
+
+                hMarker = L.marker([lat, lng], { icon: hIcon }).addTo(map);
+                hMarker.bindPopup(`<strong>起降點 H</strong><br>${formatCoord(lat, lng)}<br><br><button class="danger" onclick="clearHPoint()">刪除此點</button>`);
+                hMarker.openPopup();
+
+                updateHUI();
+                resetModes(''); 
+            } 
+            else {
+                updateSingleDisplay(lat, lng);
+                if (singleMarker) map.removeLayer(singleMarker);
+
+                singleMarker = L.marker([lat, lng]).addTo(map);
+                singleMarker.bindPopup(`單點查詢<br>${formatCoord(lat, lng)}<br><br><button class="danger" onclick="clearSinglePoint()">清除此點</button>`);
+                singleMarker.openPopup();
+            }
+        });
+
+        function searchAddress() {
+            var query = document.getElementById('addressInput').value;
+            if (!query) { alert('請輸入要搜尋的地址或地標！'); return; }
+
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        let lat = parseFloat(data[0].lat), lng = parseFloat(data[0].lon);
+                        map.setView([lat, lng], 17);
+                        updateSingleDisplay(lat, lng);
+                        if (singleMarker) map.removeLayer(singleMarker);
+                        singleMarker = L.marker([lat, lng]).addTo(map).bindPopup(data[0].display_name).openPopup();
+                    } else {
+                        alert('找不到相關地址！');
+                    }
+                }).catch(err => alert('連線失敗'));
+        }
+
+        document.getElementById('addressInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') searchAddress();
+        });
+    </script>
+</body>
+</html>
