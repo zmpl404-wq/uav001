@@ -18,8 +18,9 @@
             padding: 0;
             display: flex;
             height: 100vh;
-            height: 100dvh; /* 適應手機瀏覽器動態網址列高度 */
+            height: 100dvh;
             overflow: hidden;
+            position: relative;
         }
         #sidebar {
             width: 380px;
@@ -30,6 +31,7 @@
             overflow-y: auto;
             z-index: 1000;
             flex-shrink: 0;
+            -webkit-overflow-scrolling: touch;
         }
         .input-group {
             margin-bottom: 10px;
@@ -40,12 +42,12 @@
             font-weight: bold;
             font-size: 13px;
         }
-        input[type="text"], select {
+        input[type="text"], input[type="number"], select {
             width: 100%;
             padding: 8px;
             border: 1px solid #ccc;
             border-radius: 4px;
-            font-size: 14px; /* 手機端避免自動縮放 */
+            font-size: 14px;
             background: #fff;
         }
         button {
@@ -66,6 +68,10 @@
         button.h-btn { background-color: #d9534f; }
         button.h-btn.active { background-color: #c9302c; border: 2px solid #fff; }
 
+        button.circle-btn { background-color: #6f42c1; }
+        button.circle-btn:hover { background-color: #5a32a3; }
+        button.circle-btn.active { background-color: #5a32a3; border: 2px solid #fff; }
+
         button.secondary { background-color: #6c757d; }
         button.secondary:hover { background-color: #5a6268; }
         button.danger { background-color: #dc3545; padding: 6px 10px; font-size: 12px; width: auto; margin-left: 5px; margin-bottom: 0; }
@@ -76,25 +82,20 @@
         hr { border: 0; border-top: 1px solid #ccc; margin: 12px 0; }
         
         #polygon-points-container {
-            max-height: 100px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            padding: 6px;
-            background: #fff;
-            border-radius: 4px;
             margin-bottom: 8px;
         }
         .point-item {
             font-size: 12px;
             margin-bottom: 5px;
             padding: 5px;
-            background: #e9ecef;
+            background: #fff;
+            border: 1px solid #ddd;
             border-radius: 3px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-        .h-point-box {
+        .h-point-box, .circle-point-box {
             font-size: 12px;
             padding: 6px;
             background: #fdf7f7;
@@ -105,10 +106,15 @@
             justify-content: space-between;
             align-items: center;
         }
+        .circle-point-box {
+            background: #f8f4ff;
+            border-color: #6f42c1;
+        }
         #map {
             flex-grow: 1;
             height: 100%;
             touch-action: manipulation;
+            position: relative;
         }
 
         .layer-select-box {
@@ -121,6 +127,17 @@
 
         .custom-number-icon {
             background-color: #d9534f;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            font-weight: bold;
+            line-height: 26px;
+            font-size: 14px;
+            border: 2px solid white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        .custom-circle-icon {
+            background-color: #6f42c1;
             color: white;
             border-radius: 50%;
             text-align: center;
@@ -153,20 +170,45 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.4);
         }
 
+        .map-label-tag {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #007bff;
+            color: #007bff;
+            padding: 2px 6px;
+            font-size: 11px;
+            font-weight: bold;
+            border-radius: 3px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            white-space: nowrap;
+        }
+        .map-area-tag {
+            background: rgba(226, 240, 217, 0.95);
+            border: 2px solid #385723;
+            color: #385723;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        /* 圓形且放大版的指北針樣式 */
         .leaflet-control-rotate {
             background: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+            border-radius: 50% !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.35);
             padding: 4px;
-            border: 2px solid rgba(0,0,0,0.1);
-            margin-left: 10px !important;
-            margin-bottom: 10px !important;
+            border: 2px solid rgba(0,0,0,0.15);
+            margin-top: 12px !important;
+            margin-left: 12px !important;
         }
         .leaflet-control-rotate-toggle {
             width: 60px !important;     
             height: 60px !important;    
             background-color: #fff !important;
-            border-radius: 6px;
+            border-radius: 50% !important;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -190,20 +232,32 @@
             background-color: #f4f4f4;
         }
 
-        /* 📱 響應式手機排版適配 (螢幕寬度小於 768px 時觸發) */
+        /* 手機直向檢視 RWD 優化 */
         @media screen and (max-width: 768px) {
             body {
-                flex-direction: column-reverse; /* 手機上把地圖放上方，選單放下方或可捲動 */
-            }
-            #sidebar {
-                width: 100%;
-                height: 45vh; /* 手機上側邊欄佔下方 45% 高度 */
-                border-right: none;
-                border-top: 2px solid #ccc;
+                flex-direction: column;
+                height: 100vh;
+                height: 100dvh;
             }
             #map {
                 width: 100%;
-                height: 55vh; /* 地圖佔上方 55% 高度 */
+                height: 55vh;
+                flex-grow: 1;
+            }
+            #sidebar {
+                width: 100%;
+                height: 45vh;
+                border-right: none;
+                border-top: 2px solid #ccc;
+                flex-shrink: 0;
+            }
+            .leaflet-control-rotate-toggle {
+                width: 45px !important;
+                height: 45px !important;
+            }
+            .compass-svg {
+                width: 38px;
+                height: 38px;
             }
         }
     </style>
@@ -211,7 +265,7 @@
 <body>
 
     <div id="sidebar">
-        <h2>UAV 飛行與障礙物規畫</h2>
+        <h2 style="margin-top: 0;">UAV 飛行與障礙物規畫</h2>
         
         <!-- 坐標系切換 -->
         <div class="input-group">
@@ -223,16 +277,18 @@
             </select>
         </div>
 
-        <!-- 底圖選擇選單 -->
-        <div class="layer-select-box">
-            <label for="basemapSelect">地圖底圖選擇：</label>
-            <select id="basemapSelect" onchange="changeBasemap()">
-                <option value="emap">內政部臺灣通用電子地圖</option>
-                <option value="PHOTO2">國土測繪中心正射影像 (衛星圖)</option>
-                <option value="EMAP01">TGOS 台灣通用電子地圖 (白底版)</option>
-                <option value="HILLSHADE">TGOS 地形暈渲圖</option>
+        <!-- 電塔範圍篩選設定 -->
+        <div class="layer-select-box" style="background: #fff9e6; border-color: #ffeeba;">
+            <label for="towerRadiusSelect">⚡ 電塔顯示範圍篩選（實際距離）：</label>
+            <select id="towerRadiusSelect" onchange="filterTowerRange()">
+                <option value="all">顯示全部電塔</option>
+                <option value="1">以地圖中心方圓 1 公里</option>
+                <option value="3">以地圖中心方圓 3 公里</option>
+                <option value="5" selected>以地圖中心方圓 5 公里</option>
+                <option value="10">以地圖中心方圓 10 公里</option>
+                <option value="20">以地圖中心方圓 20 公里</option>
             </select>
-            <p style="font-size: 11px; color: #666; margin: 6px 0 0 0;">💡 提示：可從右上角圖層控制勾選「路名與地標圖層」疊加於衛星圖上。</p>
+            <p style="font-size: 11px; color: #856404; margin: 6px 0 0 0;" id="towerStatsText">⚡ 載入中...</p>
         </div>
 
         <hr>
@@ -267,14 +323,50 @@
 
         <!-- 多邊形與 H 點控制 -->
         <div>
-            <h3>空域範圍 (多邊形點位)</h3>
+            <h3>空域範圍規劃 (多邊形 / 圓形)</h3>
+            
+            <!-- 面積顯示單位選擇 -->
+            <div class="input-group" style="background: #eef2f7; padding: 8px; border-radius: 4px; border: 1px solid #d0d7de;">
+                <label for="areaUnitSelect" style="color: #0056b3; margin-bottom: 4px;">📐 面積顯示單位：</label>
+                <select id="areaUnitSelect" onchange="drawPolygon(); drawCircleOnMap();">
+                    <option value="ping">坪</option>
+                    <option value="hectare">公頃 (ha)</option>
+                    <option value="sqm">平方公尺 (m²)</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom: 8px;">
+                <label style="font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                    <input type="checkbox" id="showMapLabelsToggle" checked onchange="drawPolygon(); drawCircleOnMap();"> 🗺 在地圖上直接顯示距離與面積
+                </label>
+            </div>
+            
             <button id="togglePolygonBtn" class="secondary" onclick="togglePolygonMode()">切換為：多邊形點選模式</button>
             <button class="secondary" onclick="clearAllPolygon()">清除所有多邊形點位</button>
             <div id="polygon-points-container">
                 <span style="color: #888; font-size: 12px;">尚未選取多邊形點位</span>
             </div>
 
-            <h3>起降點 H 規劃</h3>
+            <hr style="margin: 8px 0;">
+
+            <!-- 圓形範圍工具 -->
+            <h3>圓形範圍 (直徑/半徑設定)</h3>
+            <div class="input-group">
+                <label for="circleRadiusInput">圓形半徑大小：</label>
+                <div style="display: flex; gap: 5px;">
+                    <input type="number" id="circleRadiusInput" value="200" min="1" style="flex: 2;" onchange="updateCircleRadius()">
+                    <select id="circleUnitSelect" style="flex: 1;" onchange="updateCircleRadius()">
+                        <option value="m">公尺 (m)</option>
+                        <option value="km">公里 (km)</option>
+                    </select>
+                </div>
+            </div>
+            <button id="toggleCircleBtn" class="circle-btn" onclick="toggleCircleMode()">切換為：放置圓形中心點模式</button>
+            <div id="circle-point-container" class="circle-point-box">
+                <span style="color: #888; font-size: 12px;">尚未設定圓形範圍</span>
+            </div>
+
+            <h3 style="margin-top: 15px;">起降點 H 規劃</h3>
             <button id="toggleHBtn" class="h-btn" onclick="toggleHMode()">切換為：放置起降點 H 模式</button>
             <div id="h-point-container" class="h-point-box">
                 <span style="color: #888; font-size: 12px;">尚未設定起降點 H</span>
@@ -328,48 +420,86 @@
             
             let lat = phi1 - (N1 * t1 / R1) * (D*D/2 - (5 + 3*t1*t1 + 10*c1 - 4*c1*c1 - 9*0.00673949674227)*Math.pow(D,4)/24);
             let lon = lon0 + (D - (1 + 2*t1*t1 + c1)*Math.pow(D,3)/6) / cosPhi1;
-            return { lat: lat * 180 / Math.PI, lng: lon * 180 / Math.PI };
+            return { lat: lat * 180 / Math.PI, lon: lon * 180 / Math.PI };
+        }
+
+        function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+            let R = 6371; // 地球半徑 (km)
+            let dLat = (lat2 - lat1) * Math.PI / 180;
+            let dLon = (lon2 - lon1) * Math.PI / 180;
+            let a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function calculatePolygonArea(points) {
+            if (points.length < 3) return 0;
+            let area = 0;
+            let earthRadius = 6378137;
+            for (let i = 0; i < points.length; i++) {
+                let p1 = points[i];
+                let p2 = points[(i + 1) % points.length];
+                let lat1 = p1.lat * Math.PI / 180;
+                let lat2 = p2.lat * Math.PI / 180;
+                let lon1 = p1.lng * Math.PI / 180;
+                let lon2 = p2.lng * Math.PI / 180;
+                area += (lon2 - lon1) * (2 + Math.sin(lat1) + Math.sin(lat2));
+            }
+            area = area * earthRadius * earthRadius / 2;
+            return Math.abs(area);
         }
 
         const wmtsBaseUrl = "https://wmts.nlsc.gov.tw/wmts";
 
         var layers = {
             "emap": L.tileLayer(`${wmtsBaseUrl}/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}`, {
-                maxZoom: 19,
+                maxZoom: 23,
+                maxNativeZoom: 19,
                 attribution: '&copy; 內政部國土測繪中心'
             }),
             "PHOTO2": L.tileLayer(`${wmtsBaseUrl}/PHOTO2/default/GoogleMapsCompatible/{z}/{y}/{x}`, {
-                maxZoom: 19,
+                maxZoom: 23,
+                maxNativeZoom: 19,
                 attribution: '&copy; 國土測繪中心正射影像'
             }),
             "EMAP01": L.tileLayer(`${wmtsBaseUrl}/EMAP01/default/GoogleMapsCompatible/{z}/{y}/{x}`, {
-                maxZoom: 19,
+                maxZoom: 23,
+                maxNativeZoom: 19,
                 attribution: '&copy; TGOS 台灣通用電子地圖'
             }),
             "HILLSHADE": L.tileLayer(`${wmtsBaseUrl}/HILLSHADE/default/GoogleMapsCompatible/{z}/{y}/{x}`, {
-                maxZoom: 19,
+                maxZoom: 23,
+                maxNativeZoom: 19,
                 attribution: '&copy; TGOS 地形暈渲圖'
             })
         };
 
         var roadLabelLayer = L.tileLayer(`${wmtsBaseUrl}/ROAD/default/GoogleMapsCompatible/{z}/{y}/{x}`, {
-            maxZoom: 19,
+            maxZoom: 23,
+            maxNativeZoom: 19,
             opacity: 0.9
         });
 
         var powerTowerLayer = L.layerGroup();
+        let allTowersData = [];
 
         var map = L.map('map', {
             center: [24.1477, 120.6736],
             zoom: 12,
+            minZoom: 5,
+            maxZoom: 23,
             layers: [layers["emap"]],
             rotate: true,           
             touchRotate: true,      
             rotateControl: {
-                position: 'bottomleft', 
+                position: 'topleft',
                 closeOnZeroBearing: false
             }
         });
+
+        L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
 
         var baseMaps = {
             "內政部通用電子地圖": layers["emap"],
@@ -379,7 +509,7 @@
         };
 
         var overlayMaps = {
-            "🏷️ 路名與地標圖層": roadLabelLayer,
+            "🏷 路名與地標圖層": roadLabelLayer,
             "⚡ 內建電塔圖層": powerTowerLayer
         };
 
@@ -412,8 +542,9 @@
                         if (singleMarker) map.removeLayer(singleMarker);
                         singleMarker = L.marker([lat, lng]).addTo(map);
                         singleMarker.bindPopup(`您的目前位置<br>${formatCoord(lat, lng)}<br><br><button class="danger" onclick="clearSinglePoint()">清除此點</button>`).openPopup();
+                        filterTowerRange();
                     }, function (error) {
-                        alert('無法取得目前位置，請確認是否授權瀏覽器定位權限（或檢查是否使用 HTTPS 安全連線）。');
+                        alert('無法取得目前位置，請確認是否授權瀏覽器定位權限。');
                     }, { enableHighAccuracy: true });
                 });
                 return container;
@@ -425,46 +556,77 @@
             .then(response => response.json())
             .then(data => {
                 if (data.features) {
-                    let count = 0;
+                    allTowersData = [];
                     data.features.forEach(f => {
                         if (f.geometry && f.geometry.type === 'Point') {
                             let coords = f.geometry.coordinates;
-                            let lat = coords[1], lon = coords[0];
-                            count++;
-
-                            let tIcon = L.divIcon({
-                                className: 'custom-tower-icon',
-                                html: '⚡',
-                                iconSize: [30, 30],
-                                iconAnchor: [15, 15]
-                            });
-
-                            let marker = L.marker([lat, lon], { icon: tIcon });
-                            marker.bindPopup(`高壓電塔 #${count}<br>${formatCoord(lat, lon)}`);
-                            powerTowerLayer.addLayer(marker);
+                            allTowersData.push({ lat: coords[1], lon: coords[0] });
                         }
                     });
+                    filterTowerRange();
                 }
             })
-            .catch(err => console.log('找不到 towers.geojson'));
-
-        function changeBasemap() {
-            let val = document.getElementById('basemapSelect').value;
-            Object.keys(layers).forEach(key => {
-                if (map.hasLayer(layers[key])) map.removeLayer(layers[key]);
+            .catch(err => {
+                document.getElementById('towerStatsText').innerText = '⚡ 找不到 towers.geojson 檔案';
             });
-            if (layers[val]) layers[val].addTo(map);
+
+        function filterTowerRange() {
+            powerTowerLayer.clearLayers();
+            if (allTowersData.length === 0) {
+                document.getElementById('towerStatsText').innerText = '⚡ 尚無電塔資料';
+                return;
+            }
+
+            let radiusVal = document.getElementById('towerRadiusSelect').value;
+            let center = map.getCenter();
+            let count = 0, displayedCount = 0;
+
+            allTowersData.forEach(t => {
+                count++;
+                let show = true;
+                if (radiusVal !== 'all') {
+                    let maxDist = parseFloat(radiusVal);
+                    let dist = getDistanceFromLatLonInKm(center.lat, center.lng, t.lat, t.lon);
+                    if (dist > maxDist) show = false;
+                }
+
+                if (show) {
+                    displayedCount++;
+                    let tIcon = L.divIcon({
+                        className: 'custom-tower-icon',
+                        html: '⚡',
+                        iconSize: [30, 30],
+                        iconAnchor: [15, 15]
+                    });
+                    let marker = L.marker([t.lat, t.lon], { icon: tIcon });
+                    marker.bindPopup(`高壓電塔 #${displayedCount}<br>距離中心：${getDistanceFromLatLonInKm(center.lat, center.lng, t.lat, t.lon).toFixed(2)} 公里<br>${formatCoord(t.lat, t.lon)}`);
+                    powerTowerLayer.addLayer(marker);
+                }
+            });
+
+            if (radiusVal === 'all') {
+                document.getElementById('towerStatsText').innerText = `⚡ 總計顯示全部 ${displayedCount} 筆電塔`;
+            } else {
+                document.getElementById('towerStatsText').innerText = `⚡ 以地圖中心方圓 ${radiusVal}km 實際距離，顯示 ${displayedCount} / ${count} 筆電塔`;
+            }
         }
+
+        map.on('moveend', function() {
+            let radiusVal = document.getElementById('towerRadiusSelect').value;
+            if (radiusVal !== 'all') {
+                filterTowerRange();
+            }
+        });
 
         setTimeout(() => {
             let rotateToggle = document.querySelector('.leaflet-control-rotate-toggle');
             if (rotateToggle) {
                 rotateToggle.innerHTML = `
                     <svg class="compass-svg" viewBox="0 0 100 100" id="compassIcon">
-                        <polygon points="50,12 40,42 60,42" fill="#222"/>
-                        <text x="50" y="36" font-size="14" font-weight="bold" fill="#dc3545" text-anchor="middle">N</text>
-                        <polygon points="50,88 40,58 60,58" fill="#cccccc"/>
-                        <circle cx="50" cy="50" r="5" fill="#444" stroke="#fff" stroke-width="2"/>
+                        <polygon points="50,12 38,44 62,44" fill="#222"/>
+                        <text x="50" y="38" font-size="16" font-weight="bold" fill="#dc3545" text-anchor="middle">N</text>
+                        <polygon points="50,88 38,56 62,56" fill="#cccccc"/>
+                        <circle cx="50" cy="50" r="6" fill="#444" stroke="#fff" stroke-width="2"/>
                     </svg>
                 `;
                 map.on('rotate', function() {
@@ -480,12 +642,19 @@
 
         let currentCRS = 'DMS';
         let isPolygonMode = false;
+        let isCircleMode = false;
         let isHMode = false;
 
         let polygonPoints = [];       
         let polygonMarkers = [];    
         let polygonLayer = null;    
+        let mapLabelMarkers = [];   
         
+        let circleData = null; // { lat, lng, radiusInMeters }
+        let circleLayer = null;
+        let circleMarker = null;
+        let circleLabelMarker = null;
+
         let hPoint = null;
         let hMarker = null;
         let singleMarker = null;
@@ -510,6 +679,7 @@
 
             if (lastLat !== null && lastLng !== null) updateSingleDisplay(lastLat, lastLng);
             updatePolygonUI();
+            updateCircleUI();
             updateHUI();
         }
 
@@ -566,11 +736,12 @@
                 }
             }
 
-            map.setView([lat, lng], 17);
+            map.setView([lat, lng], 18);
             updateSingleDisplay(lat, lng);
             if (singleMarker) map.removeLayer(singleMarker);
             singleMarker = L.marker([lat, lng]).addTo(map);
             singleMarker.bindPopup(`指定座標查詢<br>${formatCoord(lat, lng)}<br><br><button class="danger" onclick="clearSinglePoint()">清除此點</button>`).openPopup();
+            filterTowerRange();
         }
 
         function clearSinglePoint() {
@@ -582,10 +753,15 @@
 
         function resetModes(activeMode) {
             isPolygonMode = (activeMode === 'polygon');
+            isCircleMode = (activeMode === 'circle');
             isHMode = (activeMode === 'H');
 
             document.getElementById('togglePolygonBtn').className = isPolygonMode ? 'active' : 'secondary';
             document.getElementById('togglePolygonBtn').innerText = isPolygonMode ? '【多邊形選點中 - 點擊地圖新增】' : '切換為：多邊形點選模式';
+
+            let cBtn = document.getElementById('toggleCircleBtn');
+            cBtn.className = isCircleMode ? 'circle-btn active' : 'circle-btn';
+            cBtn.innerText = isCircleMode ? '【請在地圖點擊放置圓形中心】' : '切換為：放置圓形中心點模式';
 
             let hBtn = document.getElementById('toggleHBtn');
             hBtn.className = isHMode ? 'h-btn active' : 'h-btn';
@@ -593,6 +769,7 @@
         }
 
         function togglePolygonMode() { resetModes(isPolygonMode ? '' : 'polygon'); }
+        function toggleCircleMode() { resetModes(isCircleMode ? '' : 'circle'); }
         function toggleHMode() { resetModes(isHMode ? '' : 'H'); }
 
         function clearAllPolygon() {
@@ -600,7 +777,13 @@
             polygonMarkers.forEach(m => map.removeLayer(m));
             polygonMarkers = [];
             if (polygonLayer) { map.removeLayer(polygonLayer); polygonLayer = null; }
+            clearMapLabels();
             updatePolygonUI();
+        }
+
+        function clearMapLabels() {
+            mapLabelMarkers.forEach(m => map.removeLayer(m));
+            mapLabelMarkers = [];
         }
 
         function removePolygonPoint(index) {
@@ -623,10 +806,49 @@
             drawPolygon();
         }
 
+        function clearCirclePoint() {
+            if (circleLayer) { map.removeLayer(circleLayer); circleLayer = null; }
+            if (circleMarker) { map.removeLayer(circleMarker); circleMarker = null; }
+            if (circleLabelMarker) { map.removeLayer(circleLabelMarker); circleLabelMarker = null; }
+            circleData = null;
+            updateCircleUI();
+        }
+
+        function updateCircleRadius() {
+            if (!circleData) return;
+            let val = parseFloat(document.getElementById('circleRadiusInput').value) || 0;
+            let unit = document.getElementById('circleUnitSelect').value;
+            let radiusInMeters = unit === 'km' ? val * 1000 : val;
+            circleData.radiusInMeters = radiusInMeters;
+            drawCircleOnMap();
+            updateCircleUI();
+        }
+
         function clearHPoint() {
             if (hMarker) { map.removeLayer(hMarker); hMarker = null; }
             hPoint = null;
             updateHUI();
+        }
+
+        function formatAreaText(areaSqM) {
+            let unit = document.getElementById('areaUnitSelect').value;
+            if (unit === 'hectare') {
+                let ha = (areaSqM / 10000).toFixed(2);
+                return `${ha} 公頃`;
+            } else if (unit === 'sqm') {
+                return `${areaSqM.toFixed(1)} 平方公尺`;
+            } else {
+                let ping = (areaSqM * 0.3025).toFixed(1);
+                return `${ping} 坪`;
+            }
+        }
+
+        function formatLengthText(lengthMeters) {
+            if (lengthMeters >= 1000) {
+                return `${(lengthMeters / 1000).toFixed(2)} km`;
+            } else {
+                return `${lengthMeters.toFixed(1)} m`;
+            }
         }
 
         function updatePolygonUI() {
@@ -637,12 +859,46 @@
             }
             let html = '';
             polygonPoints.forEach((pt, index) => {
+                let distInfo = '';
+                if (index > 0) {
+                    let prev = polygonPoints[index - 1];
+                    let d = getDistanceFromLatLonInKm(prev.lat, prev.lng, pt.lat, pt.lng);
+                    let dText = d >= 1 ? `${d.toFixed(2)} 公里` : `${(d * 1000).toFixed(0)} 公尺`;
+                    distInfo = `<br><span style="color: #007bff; font-size: 11px;">📏 距前一點：${dText}</span>`;
+                }
                 html += `<div class="point-item">
-                    <span><strong>#${index + 1}</strong>: ${formatCoord(pt.lat, pt.lng)}</span>
+                    <span><strong>#${index + 1}</strong>: ${formatCoord(pt.lat, pt.lng)}${distInfo}</span>
                     <button class="danger" onclick="removePolygonPoint(${index})">刪除</button>
                 </div>`;
             });
+
+            if (polygonPoints.length >= 3) {
+                let areaSqM = calculatePolygonArea(polygonPoints);
+                let areaText = formatAreaText(areaSqM);
+                html += `<div style="margin-top:6px; padding:6px; background:#e2f0d9; border-radius:4px; font-size:12px; color:#385723; font-weight:bold;">
+                    📊 總面積：${areaText}（${(areaSqM).toFixed(1)} m²）
+                </div>`;
+            }
+
             container.innerHTML = html;
+        }
+
+        function updateCircleUI() {
+            const container = document.getElementById('circle-point-container');
+            if (!circleData) {
+                container.innerHTML = '<span style="color: #888; font-size: 12px;">尚未設定圓形範圍</span>';
+                return;
+            }
+            let areaSqM = Math.PI * circleData.radiusInMeters * circleData.radiusInMeters;
+            let circumference = 2 * Math.PI * circleData.radiusInMeters;
+            let areaText = formatAreaText(areaSqM);
+            let rText = circleData.radiusInMeters >= 1000 ? `${(circleData.radiusInMeters/1000).toFixed(2)} km` : `${circleData.radiusInMeters} m`;
+            let cText = formatLengthText(circumference);
+
+            container.innerHTML = `
+                <div><strong>圓形範圍</strong><br>中心：${formatCoord(circleData.lat, circleData.lng)}<br>半徑：${rText} | 圓周長：${cText}<br>面積：${areaText}</div>
+                <button class="danger" onclick="clearCirclePoint()">刪除</button>
+            `;
         }
 
         function updateHUI() {
@@ -659,9 +915,120 @@
 
         function drawPolygon() {
             if (polygonLayer) map.removeLayer(polygonLayer);
-            if (polygonPoints.length >= 3) {
+            clearMapLabels();
+
+            if (polygonPoints.length >= 2) {
                 let latLngs = polygonPoints.map(p => [p.lat, p.lng]);
-                polygonLayer = L.polygon(latLngs, { color: '#ffcc00', weight: 4, fillColor: '#ffcc00', fillOpacity: 0.2 }).addTo(map);
+                
+                if (polygonPoints.length >= 3) {
+                    polygonLayer = L.polygon(latLngs, { 
+                        color: '#ffcc00', 
+                        weight: 4, 
+                        fillColor: '#ffcc00', 
+                        fillOpacity: 0.2,
+                        interactive: false
+                    }).addTo(map);
+                } else {
+                    polygonLayer = L.polyline(latLngs, { 
+                        color: '#ffcc00', 
+                        weight: 4,
+                        interactive: false
+                    }).addTo(map);
+                }
+            }
+
+            let showMapLabels = document.getElementById('showMapLabelsToggle').checked;
+            if (showMapLabels && polygonPoints.length >= 2) {
+                for (let i = 0; i < polygonPoints.length; i++) {
+                    let p1 = polygonPoints[i];
+                    let nextIndex = i + 1;
+                    if (nextIndex >= polygonPoints.length) {
+                        if (polygonPoints.length >= 3) {
+                            nextIndex = 0; 
+                        } else {
+                            break; 
+                        }
+                    }
+
+                    let p2 = polygonPoints[nextIndex];
+
+                    let midLat = (p1.lat + p2.lat) / 2;
+                    let midLng = (p1.lng + p2.lng) / 2;
+                    let d = getDistanceFromLatLonInKm(p1.lat, p1.lng, p2.lat, p2.lng);
+                    let dText = d >= 1 ? `${d.toFixed(2)} km` : `${(d * 1000).toFixed(0)} m`;
+
+                    let labelIcon = L.divIcon({
+                        className: '',
+                        html: `<div class="map-label-tag">📏 ${dText}</div>`,
+                        iconSize: [70, 20],
+                        iconAnchor: [35, 10]
+                    });
+                    let m = L.marker([midLat, midLng], { icon: labelIcon, interactive: false }).addTo(map);
+                    mapLabelMarkers.push(m);
+                }
+
+                if (polygonPoints.length >= 3) {
+                    let sumLat = 0, sumLng = 0;
+                    polygonPoints.forEach(p => { sumLat += p.lat; sumLng += p.lng; });
+                    let centerLat = sumLat / polygonPoints.length;
+                    let centerLng = sumLng / polygonPoints.length;
+
+                    let areaSqM = calculatePolygonArea(polygonPoints);
+                    let areaText = formatAreaText(areaSqM);
+
+                    let areaIcon = L.divIcon({
+                        className: '',
+                        html: `<div class="map-area-tag">📊 面積<br>${areaText}</div>`,
+                        iconSize: [110, 42],
+                        iconAnchor: [55, 21]
+                    });
+                    let am = L.marker([centerLat, centerLng], { icon: areaIcon, interactive: false }).addTo(map);
+                    mapLabelMarkers.push(am);
+                }
+            }
+        }
+
+        function drawCircleOnMap() {
+            if (circleLayer) map.removeLayer(circleLayer);
+            if (circleMarker) map.removeLayer(circleMarker);
+            if (circleLabelMarker) map.removeLayer(circleLabelMarker);
+
+            if (!circleData) return;
+
+            circleLayer = L.circle([circleData.lat, circleData.lng], {
+                radius: circleData.radiusInMeters,
+                color: '#6f42c1',
+                weight: 3,
+                fillColor: '#6f42c1',
+                fillOpacity: 0.15,
+                interactive: false
+            }).addTo(map);
+
+            let centerIcon = L.divIcon({
+                className: 'custom-circle-icon',
+                html: '◎',
+                iconSize: [26, 26],
+                iconAnchor: [13, 13]
+            });
+            circleMarker = L.marker([circleData.lat, circleData.lng], { icon: centerIcon }).addTo(map);
+            circleMarker.bindPopup(`圓形範圍中心<br>${formatCoord(circleData.lat, circleData.lng)}<br><br><button class="danger" onclick="clearCirclePoint()">刪除此圓</button>`);
+
+            let showMapLabels = document.getElementById('showMapLabelsToggle').checked;
+            if (showMapLabels) {
+                let areaSqM = Math.PI * circleData.radiusInMeters * circleData.radiusInMeters;
+                let circumference = 2 * Math.PI * circleData.radiusInMeters;
+                let areaText = formatAreaText(areaSqM);
+                let rText = circleData.radiusInMeters >= 1000 ? `${(circleData.radiusInMeters/1000).toFixed(2)} km` : `${circleData.radiusInMeters} m`;
+                let cText = formatLengthText(circumference);
+
+                let labelIcon = L.divIcon({
+                    className: '',
+                    /* 調整高度與大小，確保圓周長、半徑與面積完整顯示在圖標下方且不擋住中心點 */
+                    html: `<div class="map-area-tag" style="border-color: #6f42c1; color: #4a148c; background: rgba(243, 229, 245, 0.95); margin-top: 15px;">⭕ 半徑:${rText}<br>周長:${cText}<br>面積:${areaText}</div>`,
+                    iconSize: [150, 62],
+                    iconAnchor: [75, -5]
+                });
+                circleLabelMarker = L.marker([circleData.lat, circleData.lng], { icon: labelIcon, interactive: false }).addTo(map);
             }
         }
 
@@ -688,6 +1055,18 @@
                 updatePolygonUI();
                 drawPolygon();
             } 
+            else if (isCircleMode) {
+                let val = parseFloat(document.getElementById('circleRadiusInput').value) || 200;
+                let unit = document.getElementById('circleUnitSelect').value;
+                let radiusInMeters = unit === 'km' ? val * 1000 : val;
+
+                circleData = { lat: lat, lng: lng, radiusInMeters: radiusInMeters };
+                drawCircleOnMap();
+                updateCircleUI();
+
+                if (circleMarker) circleMarker.openPopup();
+                resetModes('');
+            }
             else if (isHMode) {
                 hPoint = { lat: lat, lng: lng };
                 if (hMarker) map.removeLayer(hMarker);
@@ -700,7 +1079,7 @@
                 });
 
                 hMarker = L.marker([lat, lng], { icon: hIcon }).addTo(map);
-                hMarker.bindPopup(`<strong>起降點 H</strong><br>${formatCoord(lat, lng)}<br><br><button class="danger" onclick="clearHPoint()">刪除此點</button>`);
+                hMarker.bindPopup(`<strong>起降點 H</strong><br>${formatCoord(lat, lng)}<br><br><button class="danger" onclick="clearHPoint()">清除此點</button>`);
                 hMarker.openPopup();
 
                 updateHUI();
@@ -725,10 +1104,11 @@
                 .then(data => {
                     if (data && data.length > 0) {
                         let lat = parseFloat(data[0].lat), lng = parseFloat(data[0].lon);
-                        map.setView([lat, lng], 17);
+                        map.setView([lat, lng], 18);
                         updateSingleDisplay(lat, lng);
                         if (singleMarker) map.removeLayer(singleMarker);
                         singleMarker = L.marker([lat, lng]).addTo(map).bindPopup(data[0].display_name).openPopup();
+                        filterTowerRange();
                     } else {
                         alert('找不到相關地址！');
                     }
