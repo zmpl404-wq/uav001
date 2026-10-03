@@ -32,7 +32,76 @@
             z-index: 1000;
             flex-shrink: 0;
             -webkit-overflow-scrolling: touch;
+            transition: transform 0.3s ease, width 0.3s ease;
+            position: relative;
         }
+        #sidebar.collapsed {
+            width: 0;
+            padding: 0;
+            border-right: none;
+            transform: translateX(-100%);
+        }
+
+        /* 右側欄樣式 (地址搜尋與單點查詢) */
+        #right-sidebar {
+            width: 340px;
+            max-width: 100%;
+            padding: 15px;
+            background: #f4f4f4;
+            border-left: 1px solid #ccc;
+            overflow-y: auto;
+            z-index: 1000;
+            flex-shrink: 0;
+            -webkit-overflow-scrolling: touch;
+            transition: transform 0.3s ease, width 0.3s ease;
+            position: relative;
+        }
+        #right-sidebar.collapsed {
+            width: 0;
+            padding: 0;
+            border-left: none;
+            transform: translateX(100%);
+        }
+        
+        /* 側邊欄收摺切換按鈕樣式 */
+        .sidebar-toggle-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: auto !important;
+            display: inline-block !important;
+            padding: 6px 12px;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 1001;
+            margin-bottom: 0;
+        }
+        .sidebar-toggle-btn:hover { background-color: #5a6268; }
+
+        .right-sidebar-toggle-btn {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            width: auto !important;
+            display: inline-block !important;
+            padding: 6px 12px;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 1001;
+            margin-bottom: 0;
+        }
+        .right-sidebar-toggle-btn:hover { background-color: #5a6268; }
+
         .input-group {
             margin-bottom: 10px;
         }
@@ -74,7 +143,7 @@
 
         button.secondary { background-color: #6c757d; }
         button.secondary:hover { background-color: #5a6268; }
-        button.danger { background-color: #dc3545; padding: 6px 10px; font-size: 12px; width: auto; margin-left: 5px; margin-bottom: 0; }
+        button.danger { background-color: #dc3545; padding: 6px 10px; font-size: 12px; width: auto !important; margin-left: 5px; margin-bottom: 0; }
         button.danger:hover { background-color: #bd2130; }
         button.success { background-color: #28a745; }
         button.success:hover { background-color: #218838; }
@@ -194,7 +263,6 @@
             white-space: nowrap;
         }
 
-        /* 圓形且放大版的指北針樣式 */
         .leaflet-control-rotate {
             background: #ffffff;
             border-radius: 50% !important;
@@ -218,7 +286,7 @@
             height: 50px;
         }
 
-        .leaflet-bar a.locate-btn {
+        .leaflet-bar a.locate-btn, .leaflet-bar a.right-toggle-btn, .leaflet-bar a.left-toggle-btn {
             font-size: 18px;
             line-height: 34px;
             text-align: center;
@@ -227,12 +295,14 @@
             background-color: white;
             width: 34px;
             height: 34px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
-        .leaflet-bar a.locate-btn:hover {
+        .leaflet-bar a.locate-btn:hover, .leaflet-bar a.right-toggle-btn:hover, .leaflet-bar a.left-toggle-btn:hover {
             background-color: #f4f4f4;
         }
 
-        /* 手機直向檢視 RWD 優化 */
         @media screen and (max-width: 768px) {
             body {
                 flex-direction: column;
@@ -241,15 +311,36 @@
             }
             #map {
                 width: 100%;
-                height: 55vh;
+                height: 45vh;
                 flex-grow: 1;
             }
             #sidebar {
                 width: 100%;
-                height: 45vh;
+                height: 27vh;
                 border-right: none;
                 border-top: 2px solid #ccc;
                 flex-shrink: 0;
+            }
+            #sidebar.collapsed {
+                width: 100%;
+                height: 0;
+                padding: 0;
+                border-top: none;
+                transform: translateY(-100%);
+            }
+            #right-sidebar {
+                width: 100%;
+                height: 28vh;
+                border-left: none;
+                border-top: 2px solid #ccc;
+                flex-shrink: 0;
+            }
+            #right-sidebar.collapsed {
+                width: 100%;
+                height: 0;
+                padding: 0;
+                border-top: none;
+                transform: translateY(100%);
             }
             .leaflet-control-rotate-toggle {
                 width: 45px !important;
@@ -264,68 +355,25 @@
 </head>
 <body>
 
+    <!-- 左側面板：規劃與設定 -->
     <div id="sidebar">
-        <h2 style="margin-top: 0;">UAV 飛行與障礙物規畫</h2>
+        <button class="sidebar-toggle-btn" onclick="toggleSidebar()">◀ 收摺選單</button>
+
+        <h2 style="margin-top: 0; padding-right: 85px;">UAV 飛行規劃</h2>
         
-        <!-- 坐標系切換 -->
-        <div class="input-group">
-            <label for="crsSelect">坐標系選擇：</label>
-            <select id="crsSelect" onchange="changeCRS()">
-                <option value="DMS">WGS84 度分秒 (DMS)</option>
-                <option value="WGS84">WGS84 經緯度 (小數度)</option>
-                <option value="TWD97">TWD97 二度分帶 (EPSG:3826)</option>
-            </select>
-        </div>
-
-        <!-- 電塔範圍篩選設定 -->
-        <div class="layer-select-box" style="background: #fff9e6; border-color: #ffeeba;">
-            <label for="towerRadiusSelect">⚡ 電塔顯示範圍篩選（實際距離）：</label>
-            <select id="towerRadiusSelect" onchange="filterTowerRange()">
-                <option value="all">顯示全部電塔</option>
-                <option value="1">以地圖中心方圓 1 公里</option>
-                <option value="3">以地圖中心方圓 3 公里</option>
-                <option value="5" selected>以地圖中心方圓 5 公里</option>
-                <option value="10">以地圖中心方圓 10 公里</option>
-                <option value="20">以地圖中心方圓 20 公里</option>
-            </select>
-            <p style="font-size: 11px; color: #856404; margin: 6px 0 0 0;" id="towerStatsText">⚡ 載入中...</p>
+        <!-- 1. 起降點 H 規劃 -->
+        <h3 style="margin-top: 5px;">起降點 H 規劃</h3>
+        <button id="toggleHBtn" class="h-btn" onclick="toggleHMode()">切換為：放置起降點 H 模式</button>
+        <div id="h-point-container" class="h-point-box">
+            <span style="color: #888; font-size: 12px;">尚未設定起降點 H</span>
         </div>
 
         <hr>
 
-        <!-- 地址搜尋 -->
-        <div class="input-group">
-            <label for="addressInput">地址 / 地標快速定位：</label>
-            <input type="text" id="addressInput" placeholder="例如：臺中市西區...">
-        </div>
-        <button onclick="searchAddress()">搜尋定位</button>
-
-        <hr>
-
-        <!-- 單點模式結果 -->
-        <div id="single-mode-panel">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin: 5px 0;">單點座標查詢</h3>
-                <button class="danger" onclick="clearSinglePoint()">清除單點</button>
-            </div>
-            <div class="input-group">
-                <label id="lbl-coord1">北緯 N:</label>
-                <input type="text" id="coord1" placeholder="請輸入數值...">
-            </div>
-            <div class="input-group">
-                <label id="lbl-coord2">東經 E:</label>
-                <input type="text" id="coord2" placeholder="請輸入數值...">
-            </div>
-            <button class="success" onclick="locateInputCoord()">📍 定位輸入的座標</button>
-        </div>
-
-        <hr>
-
-        <!-- 多邊形與 H 點控制 -->
+        <!-- 2. 空域範圍規劃 (多邊形 / 圓形) -->
         <div>
-            <h3>空域範圍規劃 (多邊形 / 圓形)</h3>
+            <h3>空域範圍規劃 (多邊形)</h3>
             
-            <!-- 面積顯示單位選擇 -->
             <div class="input-group" style="background: #eef2f7; padding: 8px; border-radius: 4px; border: 1px solid #d0d7de;">
                 <label for="areaUnitSelect" style="color: #0056b3; margin-bottom: 4px;">📐 面積顯示單位：</label>
                 <select id="areaUnitSelect" onchange="drawPolygon(); drawCircleOnMap();">
@@ -349,7 +397,6 @@
 
             <hr style="margin: 8px 0;">
 
-            <!-- 圓形範圍工具 -->
             <h3>圓形範圍 (直徑/半徑設定)</h3>
             <div class="input-group">
                 <label for="circleRadiusInput">圓形半徑大小：</label>
@@ -365,22 +412,83 @@
             <div id="circle-point-container" class="circle-point-box">
                 <span style="color: #888; font-size: 12px;">尚未設定圓形範圍</span>
             </div>
+        </div>
 
-            <h3 style="margin-top: 15px;">起降點 H 規劃</h3>
-            <button id="toggleHBtn" class="h-btn" onclick="toggleHMode()">切換為：放置起降點 H 模式</button>
-            <div id="h-point-container" class="h-point-box">
-                <span style="color: #888; font-size: 12px;">尚未設定起降點 H</span>
-            </div>
+        <hr>
+
+        <!-- 3. 坐標系選擇 -->
+        <div class="input-group">
+            <label for="crsSelect">坐標系選擇：</label>
+            <select id="crsSelect" onchange="changeCRS()">
+                <option value="DMS">WGS84 度分秒 (DMS)</option>
+                <option value="WGS84">WGS84 經緯度 (小數度)</option>
+                <option value="TWD97">TWD97 二度分帶 (EPSG:3826)</option>
+            </select>
+        </div>
+
+        <!-- 4. 電塔顯示範圍 -->
+        <div class="layer-select-box" style="background: #fff9e6; border-color: #ffeeba; margin-bottom: 0;">
+            <label for="towerRadiusSelect">⚡ 電塔顯示範圍篩選（實際距離）：</label>
+            <select id="towerRadiusSelect" onchange="filterTowerRange()">
+                <option value="all">顯示全部電塔</option>
+                <option value="1">以地圖中心方圓 1 公里</option>
+                <option value="3">以地圖中心方圓 3 公里</option>
+                <option value="5" selected>以地圖中心方圓 5 公里</option>
+                <option value="10">以地圖中心方圓 10 公里</option>
+                <option value="20">以地圖中心方圓 20 公里</option>
+            </select>
+            <p style="font-size: 11px; color: #856404; margin: 6px 0 0 0;" id="towerStatsText">⚡ 載入中...</p>
         </div>
     </div>
 
     <div id="map"></div>
 
-    <!-- 引入 Leaflet JavaScript -->
+    <!-- 右側面板：地址搜尋與單點查詢 -->
+    <div id="right-sidebar">
+        <button class="right-sidebar-toggle-btn" onclick="toggleRightSidebar()">收摺 ▶</button>
+        <h2 style="margin-top: 0; padding-left: 65px;">定位與查詢</h2>
+
+        <div class="input-group">
+            <label for="addressInput">地址 / 地標快速定位：</label>
+            <input type="text" id="addressInput" placeholder="例如：臺中市西區...">
+        </div>
+        <button onclick="searchAddress()">搜尋定位</button>
+
+        <hr>
+
+        <div id="single-mode-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 5px 0;">單點座標查詢</h3>
+                <button class="danger" onclick="clearSinglePoint()">清除單點</button>
+            </div>
+            <div class="input-group">
+                <label id="lbl-coord1">北緯 N:</label>
+                <input type="text" id="coord1" placeholder="請輸入數值...">
+            </div>
+            <div class="input-group">
+                <label id="lbl-coord2">東經 E:</label>
+                <input type="text" id="coord2" placeholder="請輸入數值...">
+            </div>
+            <button class="success" onclick="locateInputCoord()">📍 定位輸入的座標</button>
+        </div>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate-src.js"></script>
     
     <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+            setTimeout(() => { map.invalidateSize(); }, 300);
+        }
+
+        function toggleRightSidebar() {
+            const rightSidebar = document.getElementById('right-sidebar');
+            rightSidebar.classList.toggle('collapsed');
+            setTimeout(() => { map.invalidateSize(); }, 300);
+        }
+
         function toDMS(lat, lng) {
             function convert(num) {
                 let absolute = Math.abs(num);
@@ -424,7 +532,7 @@
         }
 
         function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
-            let R = 6371; // 地球半徑 (km)
+            let R = 6371;
             let dLat = (lat2 - lat1) * Math.PI / 180;
             let dLon = (lon2 - lon1) * Math.PI / 180;
             let a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -455,31 +563,21 @@
 
         var layers = {
             "emap": L.tileLayer(`${wmtsBaseUrl}/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}`, {
-                maxZoom: 23,
-                maxNativeZoom: 19,
-                attribution: '&copy; 內政部國土測繪中心'
+                maxZoom: 23, maxNativeZoom: 19, attribution: '&copy; 內政部國土測繪中心'
             }),
             "PHOTO2": L.tileLayer(`${wmtsBaseUrl}/PHOTO2/default/GoogleMapsCompatible/{z}/{y}/{x}`, {
-                maxZoom: 23,
-                maxNativeZoom: 19,
-                attribution: '&copy; 國土測繪中心正射影像'
+                maxZoom: 23, maxNativeZoom: 19, attribution: '&copy; 國土測繪中心正射影像'
             }),
             "EMAP01": L.tileLayer(`${wmtsBaseUrl}/EMAP01/default/GoogleMapsCompatible/{z}/{y}/{x}`, {
-                maxZoom: 23,
-                maxNativeZoom: 19,
-                attribution: '&copy; TGOS 台灣通用電子地圖'
+                maxZoom: 23, maxNativeZoom: 19, attribution: '&copy; TGOS 台灣通用電子地圖'
             }),
             "HILLSHADE": L.tileLayer(`${wmtsBaseUrl}/HILLSHADE/default/GoogleMapsCompatible/{z}/{y}/{x}`, {
-                maxZoom: 23,
-                maxNativeZoom: 19,
-                attribution: '&copy; TGOS 地形暈渲圖'
+                maxZoom: 23, maxNativeZoom: 19, attribution: '&copy; TGOS 地形暈渲圖'
             })
         };
 
         var roadLabelLayer = L.tileLayer(`${wmtsBaseUrl}/ROAD/default/GoogleMapsCompatible/{z}/{y}/{x}`, {
-            maxZoom: 23,
-            maxNativeZoom: 19,
-            opacity: 0.9
+            maxZoom: 23, maxNativeZoom: 19, opacity: 0.9
         });
 
         var powerTowerLayer = L.layerGroup();
@@ -520,6 +618,8 @@
             options: { position: 'topright' },
             onAdd: function (map) {
                 var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+                
+                // 定位按鈕
                 var link = L.DomUtil.create('a', 'locate-btn', container);
                 link.href = '#';
                 link.title = '定位目前位置';
@@ -547,10 +647,44 @@
                         alert('無法取得目前位置，請確認是否授權瀏覽器定位權限。');
                     }, { enableHighAccuracy: true });
                 });
+
+                // 在地圖定位按鈕下方增加一個按鈕來收摺右側欄
+                var rightToggleLink = L.DomUtil.create('a', 'right-toggle-btn', container);
+                rightToggleLink.href = '#';
+                rightToggleLink.title = '收摺/展開右側欄';
+                rightToggleLink.innerHTML = '⛶';
+
+                L.DomEvent.on(rightToggleLink, 'click', function (e) {
+                    L.DomEvent.stopPropagation(e);
+                    L.DomEvent.preventDefault(e);
+                    toggleRightSidebar();
+                });
+
                 return container;
             }
         });
         map.addControl(new LocateControl());
+
+        // 左側指北針下方新增收摺左側欄按鈕
+        var LeftToggleControl = L.Control.extend({
+            options: { position: 'topleft' },
+            onAdd: function (map) {
+                var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+                var leftToggleLink = L.DomUtil.create('a', 'left-toggle-btn', container);
+                leftToggleLink.href = '#';
+                leftToggleLink.title = '收摺/展開左側欄';
+                leftToggleLink.innerHTML = '▶';
+
+                L.DomEvent.on(leftToggleLink, 'click', function (e) {
+                    L.DomEvent.stopPropagation(e);
+                    L.DomEvent.preventDefault(e);
+                    toggleSidebar();
+                });
+
+                return container;
+            }
+        });
+        map.addControl(new LeftToggleControl());
 
         fetch('towers.geojson')
             .then(response => response.json())
@@ -650,7 +784,7 @@
         let polygonLayer = null;    
         let mapLabelMarkers = [];   
         
-        let circleData = null; // { lat, lng, radiusInMeters }
+        let circleData = null; 
         let circleLayer = null;
         let circleMarker = null;
         let circleLabelMarker = null;
@@ -922,17 +1056,11 @@
                 
                 if (polygonPoints.length >= 3) {
                     polygonLayer = L.polygon(latLngs, { 
-                        color: '#ffcc00', 
-                        weight: 4, 
-                        fillColor: '#ffcc00', 
-                        fillOpacity: 0.2,
-                        interactive: false
+                        color: '#ffcc00', weight: 4, fillColor: '#ffcc00', fillOpacity: 0.2, interactive: false
                     }).addTo(map);
                 } else {
                     polygonLayer = L.polyline(latLngs, { 
-                        color: '#ffcc00', 
-                        weight: 4,
-                        interactive: false
+                        color: '#ffcc00', weight: 4, interactive: false
                     }).addTo(map);
                 }
             }
@@ -943,15 +1071,10 @@
                     let p1 = polygonPoints[i];
                     let nextIndex = i + 1;
                     if (nextIndex >= polygonPoints.length) {
-                        if (polygonPoints.length >= 3) {
-                            nextIndex = 0; 
-                        } else {
-                            break; 
-                        }
+                        if (polygonPoints.length >= 3) { nextIndex = 0; } else { break; }
                     }
 
                     let p2 = polygonPoints[nextIndex];
-
                     let midLat = (p1.lat + p2.lat) / 2;
                     let midLng = (p1.lng + p2.lng) / 2;
                     let d = getDistanceFromLatLonInKm(p1.lat, p1.lng, p2.lat, p2.lng);
@@ -960,8 +1083,7 @@
                     let labelIcon = L.divIcon({
                         className: '',
                         html: `<div class="map-label-tag">📏 ${dText}</div>`,
-                        iconSize: [70, 20],
-                        iconAnchor: [35, 10]
+                        iconSize: [70, 20], iconAnchor: [35, 10]
                     });
                     let m = L.marker([midLat, midLng], { icon: labelIcon, interactive: false }).addTo(map);
                     mapLabelMarkers.push(m);
@@ -979,8 +1101,7 @@
                     let areaIcon = L.divIcon({
                         className: '',
                         html: `<div class="map-area-tag">📊 面積<br>${areaText}</div>`,
-                        iconSize: [110, 42],
-                        iconAnchor: [55, 21]
+                        iconSize: [110, 42], iconAnchor: [55, 21]
                     });
                     let am = L.marker([centerLat, centerLng], { icon: areaIcon, interactive: false }).addTo(map);
                     mapLabelMarkers.push(am);
@@ -997,18 +1118,12 @@
 
             circleLayer = L.circle([circleData.lat, circleData.lng], {
                 radius: circleData.radiusInMeters,
-                color: '#6f42c1',
-                weight: 3,
-                fillColor: '#6f42c1',
-                fillOpacity: 0.15,
-                interactive: false
+                color: '#6f42c1', weight: 3, fillColor: '#6f42c1', fillOpacity: 0.15, interactive: false
             }).addTo(map);
 
             let centerIcon = L.divIcon({
                 className: 'custom-circle-icon',
-                html: '◎',
-                iconSize: [26, 26],
-                iconAnchor: [13, 13]
+                html: '◎', iconSize: [26, 26], iconAnchor: [13, 13]
             });
             circleMarker = L.marker([circleData.lat, circleData.lng], { icon: centerIcon }).addTo(map);
             circleMarker.bindPopup(`圓形範圍中心<br>${formatCoord(circleData.lat, circleData.lng)}<br><br><button class="danger" onclick="clearCirclePoint()">刪除此圓</button>`);
@@ -1023,10 +1138,8 @@
 
                 let labelIcon = L.divIcon({
                     className: '',
-                    /* 調整高度與大小，確保圓周長、半徑與面積完整顯示在圖標下方且不擋住中心點 */
                     html: `<div class="map-area-tag" style="border-color: #6f42c1; color: #4a148c; background: rgba(243, 229, 245, 0.95); margin-top: 15px;">⭕ 半徑:${rText}<br>周長:${cText}<br>面積:${areaText}</div>`,
-                    iconSize: [150, 62],
-                    iconAnchor: [75, -5]
+                    iconSize: [150, 62], iconAnchor: [75, -5]
                 });
                 circleLabelMarker = L.marker([circleData.lat, circleData.lng], { icon: labelIcon, interactive: false }).addTo(map);
             }
@@ -1042,9 +1155,7 @@
 
                 let numIcon = L.divIcon({
                     className: 'custom-number-icon',
-                    html: pointNum,
-                    iconSize: [26, 26],
-                    iconAnchor: [13, 13]
+                    html: pointNum, iconSize: [26, 26], iconAnchor: [13, 13]
                 });
 
                 let marker = L.marker([lat, lng], { icon: numIcon }).addTo(map);
@@ -1073,9 +1184,7 @@
 
                 let hIcon = L.divIcon({
                     className: 'custom-h-icon',
-                    html: 'H',
-                    iconSize: [32, 32],
-                    iconAnchor: [16, 16]
+                    html: 'H', iconSize: [32, 32], iconAnchor: [16, 16]
                 });
 
                 hMarker = L.marker([lat, lng], { icon: hIcon }).addTo(map);
